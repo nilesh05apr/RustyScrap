@@ -14,7 +14,7 @@ Run
 cargo run
 ```
 
-#TODO
+## TODO
 - [x] Use ThreadPool
 - [ ] Integrate with database (sqlite or mongodb)
 - [ ] Handle pagination scrapping
