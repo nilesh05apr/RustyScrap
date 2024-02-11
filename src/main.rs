@@ -2,7 +2,8 @@ use std::{collections::HashMap, time::Instant};
 use reqwest;
 use tokio::{self}; 
 use scraper::{Html, Selector};
-
+use rusqlite::{Connection, Result};
+use rusqlite::params;
 
 
 async fn fetch(url : &str) -> Result<String, reqwest::Error>{
@@ -131,6 +132,63 @@ async fn parse(html: &str) -> Vec<String> {
     product_details.iter().map(|(title, price,  links, description)| format!("Title: {}, Price: {},  Link: {}, Description: {:?}", title, price, links, description)).collect()
 }
 
+fn save_to_db(conn: &Connection, data: Vec<String>) -> Result<()> {
+    for product in data {
+        let parts: Vec<&str> = product.split(',').collect();
+        let title = parts[0].split(':').collect::<Vec<&str>>()[1].trim();
+        let price = parts[1].split(':').collect::<Vec<&str>>()[1].trim();
+        let link = parts[2].split(':').collect::<Vec<&str>>()[1].trim();
+        let description = parts[3].split(':').collect::<Vec<&str>>()[1].trim();
+
+        conn.execute(
+            "INSERT INTO books (title, price, link, description) VALUES (?1, ?2, ?3, ?4)",
+            params![title, price, link, description],
+        )?;
+    }
+    Ok(())
+}
+
+#[derive(Debug)]
+struct Book {
+    title: String,
+    price: String,
+    link: String,
+    description: String,
+}
+
+fn connect_to_db(filename: String) -> Result<Connection> {
+    let conn = Connection::open(filename)?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS books (
+            id INTEGER PRIMARY KEY,
+            title TEXT NOT NULL,
+            price TEXT NOT NULL,
+            link TEXT NOT NULL,
+            description TEXT NOT NULL
+        )",
+        params![],
+    )?;
+    Ok(conn)
+}
+
+fn read_from_db(conn: &Connection) -> Result<Vec<Book>> {
+    let mut stmt = conn.prepare("SELECT title, price, link, description FROM books LIMIT 5")?;
+    let book_iter = stmt.query_map(params![], |row| {
+        Ok(Book {
+            title: row.get(0)?,
+            price: row.get(1)?,
+            link: row.get(2)?,
+            description: row.get(3)?,
+        })
+    })?;
+
+    let mut books = Vec::new();
+    for book in book_iter {
+        books.push(book?);
+    }
+    Ok(books)
+}
+
 #[tokio::main]
 async fn main() {
     let url = "https://books.toscrape.com/";
@@ -149,4 +207,15 @@ async fn main() {
     println!("Time elapsed: {:?}", duration);
 
 
+    // connect to the database and save the data
+    let conn = connect_to_db("books.db".to_string()).unwrap();
+    save_to_db(&conn, products).unwrap();
+
+    // read from the database
+    let books = read_from_db(&conn).unwrap();
+    println!("Books: {:?}", books);
+
+    // close the database connection
+    conn.close().unwrap();
 }
+
