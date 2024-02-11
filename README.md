@@ -16,6 +16,6 @@ cargo run
 
 ## TODO
 - [x] Use ThreadPool
-- [ ] Integrate with database (sqlite or mongodb)
+- [x] Integrate with database (sqlite or mongodb)
 - [ ] Handle pagination scrapping
 - [ ] Use Github Actions to schedule cron jobs
