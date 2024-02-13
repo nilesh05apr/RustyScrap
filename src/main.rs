@@ -5,6 +5,13 @@ use scraper::{Html, Selector};
 use rusqlite::{Connection, Result};
 use rusqlite::params;
 
+#[derive(Debug)]
+struct Book {
+    title: String,
+    price: String,
+    link: String,
+    description: String,
+}
 
 async fn fetch(url : &str) -> Result<String, reqwest::Error>{
     // Send a GET request to the URL and await the response 
@@ -90,8 +97,6 @@ async fn scrape_product_description(url : &str) -> Result<HashMap<String, String
         Ok(data)
     }
 
-
-
 async fn parse(html: &str) -> Vec<String> {
     let fragment = Html::parse_document(html);
     
@@ -148,14 +153,6 @@ fn save_to_db(conn: &Connection, data: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug)]
-struct Book {
-    title: String,
-    price: String,
-    link: String,
-    description: String,
-}
-
 fn connect_to_db(filename: String) -> Result<Connection> {
     let conn = Connection::open(filename)?;
     conn.execute(
@@ -205,7 +202,6 @@ async fn main() {
 
     let duration = start.elapsed();
     println!("Time elapsed: {:?}", duration);
-
 
     // connect to the database and save the data
     let conn = connect_to_db("books.db".to_string()).unwrap();
